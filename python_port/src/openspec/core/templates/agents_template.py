@@ -4,7 +4,7 @@ from typing import List
 from ..config import AIToolOption
 
 
-def create_agents_template(selected_tools: List[AIToolOption]) -> str:
+def create_agents_template(selected_tools: List["AIToolOption"]) -> str:
     """Create AGENTS.md template with selected AI tools."""
     
     template = """# AI Agent Instructions

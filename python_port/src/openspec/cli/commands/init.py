@@ -9,6 +9,8 @@ from typing import List
 
 from ...core.config import AI_TOOLS, OPENSPEC_DIR_NAME
 from ...core.templates import create_project_template, create_agents_template
+from ...core.configurators.registry import ToolRegistry
+from ...core.configurators.slash.registry import SlashCommandRegistry
 from ...utils.file_system import ensure_directory, write_file
 
 console = Console()
@@ -82,6 +84,10 @@ def init(force: bool, non_interactive: bool, ai_tools: str):
         project_content = create_project_template()
         write_file(str(openspec_dir / "project.md"), project_content)
         
+        # Configure AI tools
+        import asyncio
+        asyncio.run(configure_ai_tools(str(current_dir), OPENSPEC_DIR_NAME, [tool.value for tool in selected_tools]))
+        
         # Create AGENTS.md in root
         agents_content = create_agents_template(selected_tools)
         write_file(str(current_dir / "AGENTS.md"), agents_content)
@@ -99,3 +105,17 @@ def init(force: bool, non_interactive: bool, ai_tools: str):
     except Exception as e:
         console.print(f"[red]Error initializing project: {e}[/red]")
         raise click.Abort()
+
+
+async def configure_ai_tools(project_path: str, openspec_dir: str, tool_ids: List[str]) -> None:
+    """Configure AI tools for the project."""
+    for tool_id in tool_ids:
+        # Configure main tool
+        configurator = ToolRegistry.get(tool_id)
+        if configurator and configurator.is_available:
+            await configurator.configure(project_path, openspec_dir)
+        
+        # Configure slash commands
+        slash_configurator = SlashCommandRegistry.get(tool_id)
+        if slash_configurator and slash_configurator.is_available:
+            await slash_configurator.generate_all(project_path, openspec_dir)
