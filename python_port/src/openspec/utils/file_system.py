@@ -32,7 +32,10 @@ def ensure_directory(path: str) -> None:
 
 def write_file(path: str, content: str) -> None:
     """Write content to a file."""
-    Path(path).write_text(content, encoding="utf-8")
+    path_obj = Path(path)
+    # Ensure parent directories exist
+    path_obj.parent.mkdir(parents=True, exist_ok=True)
+    path_obj.write_text(content, encoding="utf-8")
 
 
 def read_file(path: str) -> str:
@@ -42,7 +45,32 @@ def read_file(path: str) -> str:
 
 def file_exists(path: str) -> bool:
     """Check if a file exists."""
-    return Path(path).exists()
+    path_obj = Path(path)
+    return path_obj.exists() and path_obj.is_file()
+
+
+def directory_exists(path: str) -> bool:
+    """Check if a directory exists."""
+    return Path(path).is_dir()
+
+
+def list_files(path: str, pattern: str = None) -> List[str]:
+    """List all files in a given path, optionally with a pattern."""
+    path_obj = Path(path)
+    if not path_obj.exists():
+        return []
+    
+    if pattern:
+        import fnmatch
+        return [
+            item.name for item in path_obj.iterdir() 
+            if item.is_file() and not item.name.startswith(".") and fnmatch.fnmatch(item.name, pattern)
+        ]
+    else:
+        return [
+            item.name for item in path_obj.iterdir() 
+            if item.is_file() and not item.name.startswith(".")
+        ]
 
 
 def list_directories(path: str) -> List[str]:
@@ -78,3 +106,34 @@ def write_json_file(path: str, data: Dict[Any, Any]) -> None:
     """Write data to a JSON file."""
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
+
+
+def copy_file(src: str, dest: str) -> None:
+    """Copy a file from source to destination."""
+    import shutil
+    dest_path = Path(dest)
+    # Ensure parent directories exist
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dest)
+
+
+def move_file(src: str, dest: str) -> None:
+    """Move a file from source to destination."""
+    import shutil
+    dest_path = Path(dest)
+    # Ensure parent directories exist
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(src, dest)
+
+
+def delete_file(path: str) -> None:
+    """Delete a file."""
+    Path(path).unlink(missing_ok=True)
+
+
+def delete_directory(path: str) -> None:
+    """Delete a directory and all its contents."""
+    import shutil
+    path_obj = Path(path)
+    if path_obj.exists():
+        shutil.rmtree(path)

@@ -137,8 +137,11 @@ def archive_change(project_path: str, name: str) -> str:
     archive_dir = changes_dir / "archive"
     ensure_directory(str(archive_dir))
     
-    # Move to archive
-    dest_path = archive_dir / name
+    # Move to archive with date prefix
+    from datetime import date
+    date_prefix = date.today().isoformat()
+    archived_name = f"{date_prefix}-{name}"
+    dest_path = archive_dir / archived_name
     source_path.rename(dest_path)
     
     return str(dest_path)

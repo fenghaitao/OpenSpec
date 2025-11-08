@@ -5,6 +5,73 @@ import re
 from typing import Optional, Dict, Any
 
 
+class MarkdownParser:
+    """Parser for OpenSpec markdown files."""
+    
+    @staticmethod
+    def parse(content: str) -> Dict[str, Any]:
+        """Parse a markdown file and extract structured data."""
+        return parse_markdown_file(content)
+    
+    @staticmethod
+    def extract_json(content: str) -> Optional[Dict[str, Any]]:
+        """Extract JSON configuration from markdown content."""
+        return extract_json_from_markdown(content)
+    
+    def parse_proposal(self, content: str) -> Dict[str, Any]:
+        """Parse a proposal markdown file."""
+        result = parse_markdown_file(content)
+        sections = result.get("sections", {})
+        
+        return {
+            "title": self._extract_title(content),
+            "why": sections.get("why", ""),
+            "what_changes": sections.get("what changes", ""),
+            "configuration": result.get("json"),
+            "sections": sections,
+            "raw_content": content
+        }
+    
+    def parse_spec(self, content: str) -> Dict[str, Any]:
+        """Parse a specification markdown file."""
+        result = parse_markdown_file(content)
+        sections = result.get("sections", {})
+        
+        return {
+            "title": self._extract_title(content),
+            "purpose": sections.get("purpose", ""),
+            "requirements": sections.get("requirements", ""),
+            "configuration": result.get("json"),
+            "sections": sections,
+            "raw_content": content
+        }
+    
+    def parse_change_spec(self, content: str) -> Dict[str, Any]:
+        """Parse a change specification markdown file."""
+        result = parse_markdown_file(content)
+        sections = result.get("sections", {})
+        
+        return {
+            "title": self._extract_title(content),
+            "deltas": sections.get("deltas", ""),
+            "configuration": result.get("json"),
+            "sections": sections,
+            "raw_content": content
+        }
+    
+    def _extract_json_config(self, content: str) -> Optional[Dict[str, Any]]:
+        """Extract JSON configuration from markdown content."""
+        return extract_json_from_markdown(content)
+    
+    def _extract_title(self, content: str) -> str:
+        """Extract the title from markdown content."""
+        lines = content.split('\n')
+        for line in lines:
+            if line.startswith('# '):
+                return line[2:].strip()
+        return ""
+
+
 def parse_markdown_file(content: str) -> Dict[str, Any]:
     """Parse a markdown file and extract structured data."""
     
