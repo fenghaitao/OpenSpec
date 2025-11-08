@@ -1,10 +1,35 @@
 """Template manager for generating AI tool configurations."""
 
-from typing import Dict, Any, Callable
+from typing import Dict, Any, List, NamedTuple
+
+
+class Template(NamedTuple):
+    """Template definition."""
+    path: str
+    content: str
 
 
 class TemplateManager:
     """Manager for AI tool templates and content generation."""
+    
+    @staticmethod
+    def get_templates(context: Dict[str, Any] = None) -> List[Template]:
+        """Get all templates for the openspec directory."""
+        from .agents_template import agents_template
+        from .project_template import create_project_template
+        
+        context = context or {}
+        
+        return [
+            Template(
+                path='AGENTS.md',
+                content=agents_template
+            ),
+            Template(
+                path='project.md', 
+                content=create_project_template(context)
+            )
+        ]
     
     @staticmethod
     def get_claude_template() -> str:

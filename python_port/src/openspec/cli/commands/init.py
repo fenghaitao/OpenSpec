@@ -80,9 +80,13 @@ def init(force: bool, non_interactive: bool, ai_tools: str):
         ensure_directory(str(openspec_dir / "changes"))
         ensure_directory(str(openspec_dir / "specs"))
         
-        # Create project.md
-        project_content = create_project_template()
-        write_file(str(openspec_dir / "project.md"), project_content)
+        # Create template files (project.md and AGENTS.md)
+        from ...core.templates.manager import TemplateManager
+        templates = TemplateManager.get_templates()
+        
+        for template in templates:
+            file_path = openspec_dir / template.path
+            write_file(str(file_path), template.content)
         
         # Configure AI tools
         import asyncio
