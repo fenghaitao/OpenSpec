@@ -114,7 +114,10 @@ def prompt_for_confirmation(message: str) -> bool:
 @click.command()
 @click.argument("name", required=False)
 @click.option("--all", "archive_all", is_flag=True, help="Archive all active changes")
-def archive(name: str, archive_all: bool):
+@click.option("--yes", is_flag=True, help="Skip confirmation prompts")
+@click.option("--skip-specs", is_flag=True, help="Skip updating specs")
+@click.option("--no-validate", is_flag=True, help="Skip validation before archiving")
+def archive(name: str, archive_all: bool, yes: bool, skip_specs: bool, no_validate: bool):
     """Archive completed changes."""
     command = ArchiveCommand()
-    command.execute(name, archive_all)
+    command.execute(name, archive_all, yes, skip_specs, no_validate)

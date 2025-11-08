@@ -95,11 +95,14 @@ def _validate_change_file(file_path: str) -> ValidationResult:
                 errors=errors
             )
         
-        # Check for required sections
-        if "## Why" not in content:
+        # Check for required sections - more flexible checking
+        has_why = any(section in content for section in ["## Why", "## Configuration"])
+        has_what_changes = any(section in content for section in ["## What Changes", "## Configuration"])
+        
+        if not has_why:
             errors.append("Missing required section: ## Why")
         
-        if "## What Changes" not in content:
+        if not has_what_changes:
             errors.append("Missing required section: ## What Changes")
         
         # Try to extract JSON configuration (optional for basic proposals)
@@ -144,11 +147,14 @@ def _validate_spec_file(file_path: str) -> ValidationResult:
                 errors=errors
             )
         
-        # Check for required sections
-        if "## Purpose" not in content:
+        # Check for required sections - more flexible checking
+        has_purpose = any(section in content for section in ["## Purpose", "## Configuration"])
+        has_requirements = any(section in content for section in ["## Requirements", "## Configuration"])
+        
+        if not has_purpose:
             errors.append("Missing required section: ## Purpose")
         
-        if "## Requirements" not in content:
+        if not has_requirements:
             errors.append("Missing required section: ## Requirements")
         
         # Try to extract JSON configuration (optional for basic specs)

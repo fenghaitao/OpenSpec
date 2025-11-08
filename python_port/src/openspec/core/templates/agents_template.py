@@ -136,7 +136,7 @@ This project is configured for the following AI tools:
 def create_agents_openspec_template() -> str:
     """Create the openspec/AGENTS.md template."""
     
-    return """# OpenSpec Agent Instructions
+    return """# OpenSpec Instructions
 
 ## Overview
 

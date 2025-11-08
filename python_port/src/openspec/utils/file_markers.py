@@ -2,6 +2,37 @@
 
 from pathlib import Path
 from typing import Optional
+from .file_system import write_file, read_file, file_exists
+
+
+async def create_file_with_markers(file_path: str, content: str) -> None:
+    """Create a new file with OpenSpec markers."""
+    marked_content = f"""<!-- OPENSPEC:START -->
+{content}
+<!-- OPENSPEC:END -->"""
+    
+    write_file(file_path, marked_content)
+
+
+async def update_file_with_markers(file_path: str, new_content: str) -> None:
+    """Update an existing file with OpenSpec markers."""
+    
+    if not file_exists(file_path):
+        await create_file_with_markers(file_path, new_content)
+        return
+    
+    existing_content = read_file(file_path)
+    
+    if has_openspec_markers(existing_content):
+        # Replace content between markers
+        updated_content = replace_content_between_markers(existing_content, new_content)
+        write_file(file_path, updated_content)
+    else:
+        # Add markers around new content
+        await create_file_with_markers(file_path, new_content)
+
+from pathlib import Path
+from typing import Optional
 from .file_system import read_file, write_file
 
 
