@@ -13,23 +13,56 @@ console = Console()
 
 
 @click.command()
+@click.option("--all", is_flag=True, help="Validate all files")
+@click.option("--changes", is_flag=True, help="Validate only changes")
+@click.option("--specs", is_flag=True, help="Validate only specs")
 @click.option("--scope", help="Scope to validate (change name or spec name)")
 @click.option("--enriched", is_flag=True, help="Show enriched validation output")
-@click.argument("path", required=False)
-def validate(scope: Optional[str], enriched: bool, path: Optional[str]):
+@click.option("--json", is_flag=True, help="Output as JSON")
+@click.option("--concurrency", type=int, default=4, help="Number of concurrent validations")
+@click.argument("items", nargs=-1)
+def validate(all: bool, changes: bool, specs: bool, scope: Optional[str], enriched: bool, json: bool, concurrency: int, items: tuple):
     """Validate OpenSpec project files."""
     
     # Find project root
-    if path:
-        project_path = Path(path).resolve()
-    else:
-        project_path = find_openspec_root()
-        
+    project_path = find_openspec_root()
     if not project_path:
         console.print("[red]Error: Not in an OpenSpec project directory.[/red]")
         raise click.Abort()
     
+    # Check if no validation scope specified
+    if not any([all, changes, specs, scope, items]):
+        console.print("Nothing to validate. Try one of:")
+        console.print("  openspec validate --all")
+        console.print("  openspec validate --changes") 
+        console.print("  openspec validate --specs")
+        console.print("  openspec validate <item>")
+        raise click.Abort()
+    
     try:
+        # Determine what to validate based on flags
+        if all:
+            scope = None  # Validate everything
+        elif changes:
+            scope = "changes"
+        elif specs:
+            scope = "specs"
+        elif items:
+            scope = list(items)[0]  # Validate specific items
+            
+            # Check for ambiguous item names
+            if scope and scope not in ["changes", "specs"]:
+                changes_dir = project_path / "openspec" / "changes"
+                specs_dir = project_path / "openspec" / "specs"
+                
+                has_change = (changes_dir / scope).exists() if changes_dir.exists() else False
+                has_spec = (specs_dir / scope).exists() if specs_dir.exists() else False
+                
+                if has_change and has_spec:
+                    console.print(f"[red]Ambiguous item '{scope}' found in both changes and specs.[/red]")
+                    console.print("Please specify --changes or --specs to clarify.")
+                    raise click.Abort()
+        
         # Run validation
         results = validate_project(str(project_path), scope=scope)
         
@@ -40,7 +73,29 @@ def validate(scope: Optional[str], enriched: bool, path: Optional[str]):
         # Display results
         has_errors = any(not result.is_valid for result in results)
         
-        if enriched:
+        if json:
+            import json as json_lib
+            output = {
+                "version": "1.0",
+                "summary": {
+                    "totals": {
+                        "total": len(results),
+                        "valid": sum(1 for r in results if r.is_valid),
+                        "invalid": sum(1 for r in results if not r.is_valid)
+                    }
+                },
+                "items": [
+                    {
+                        "path": r.file_path,
+                        "type": r.file_type,
+                        "valid": r.is_valid,
+                        "errors": r.errors or []
+                    }
+                    for r in results
+                ]
+            }
+            console.print(json_lib.dumps(output, indent=2))
+        elif enriched:
             _display_enriched_results(results)
         else:
             _display_standard_results(results)
@@ -48,7 +103,8 @@ def validate(scope: Optional[str], enriched: bool, path: Optional[str]):
         if has_errors:
             raise click.Abort()
         else:
-            console.print(f"\n[green]✓ All {len(results)} file(s) validated successfully.[/green]")
+            if not json:
+                console.print(f"\n[green]✓ All {len(results)} file(s) validated successfully.[/green]")
             
     except Exception as e:
         console.print(f"[red]Error during validation: {e}[/red]")

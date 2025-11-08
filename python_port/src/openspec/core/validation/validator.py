@@ -33,12 +33,26 @@ def validate_project(project_path: str, scope: Optional[str] = None) -> List[Val
     changes_dir = openspec_dir / "changes"
     specs_dir = openspec_dir / "specs"
     
+    # Handle scope filtering
+    validate_changes = True
+    validate_specs = True
+    specific_item = None
+    
+    if scope:
+        if scope == "changes":
+            validate_specs = False
+        elif scope == "specs":
+            validate_changes = False
+        else:
+            # Specific item name
+            specific_item = scope
+    
     # Validate change proposals
-    if changes_dir.exists():
+    if validate_changes and changes_dir.exists():
         for change_dir in changes_dir.iterdir():
-            if change_dir.is_dir() and not change_dir.name.startswith("."):
-                # Skip if scope is specified and doesn't match
-                if scope and scope != change_dir.name:
+            if change_dir.is_dir() and not change_dir.name.startswith(".") and change_dir.name != "archive":
+                # Skip if specific item is specified and doesn't match
+                if specific_item and specific_item != change_dir.name:
                     continue
                     
                 proposal_file = change_dir / "proposal.md"
@@ -47,11 +61,11 @@ def validate_project(project_path: str, scope: Optional[str] = None) -> List[Val
                     results.append(result)
     
     # Validate specs
-    if specs_dir.exists():
+    if validate_specs and specs_dir.exists():
         for spec_dir in specs_dir.iterdir():
             if spec_dir.is_dir() and not spec_dir.name.startswith("."):
-                # Skip if scope is specified and doesn't match
-                if scope and scope != spec_dir.name:
+                # Skip if specific item is specified and doesn't match
+                if specific_item and specific_item != spec_dir.name:
                     continue
                     
                 spec_file = spec_dir / "spec.md"
@@ -70,26 +84,35 @@ def _validate_change_file(file_path: str) -> ValidationResult:
     try:
         # Parse the markdown file
         content = read_file(file_path)
-        json_data = extract_json_from_markdown(content)
         
-        if not json_data:
-            errors.append("No JSON configuration found in markdown file")
+        # Basic markdown validation first
+        if not content.strip():
+            errors.append("File is empty")
             return ValidationResult(
                 file_path=file_path,
-                file_type="change",
+                file_type="change", 
                 is_valid=False,
                 errors=errors
             )
         
-        # Validate against schema
-        try:
-            change = ChangeSchema.model_validate(json_data)
-            
-            # Additional validations
-            _validate_change_business_rules(change, errors)
-            
-        except Exception as e:
-            errors.append(f"Schema validation failed: {str(e)}")
+        # Check for required sections
+        if "## Why" not in content:
+            errors.append("Missing required section: ## Why")
+        
+        if "## What Changes" not in content:
+            errors.append("Missing required section: ## What Changes")
+        
+        # Try to extract JSON configuration (optional for basic proposals)
+        json_data = extract_json_from_markdown(content)
+        
+        if json_data:
+            # Validate against schema if JSON is present
+            try:
+                change = ChangeSchema.model_validate(json_data)
+                # Additional validations
+                _validate_change_business_rules(change, errors)
+            except Exception as e:
+                errors.append(f"Schema validation failed: {str(e)}")
         
     except Exception as e:
         errors.append(f"Failed to parse file: {str(e)}")
@@ -110,10 +133,10 @@ def _validate_spec_file(file_path: str) -> ValidationResult:
     try:
         # Parse the markdown file
         content = read_file(file_path)
-        json_data = extract_json_from_markdown(content)
         
-        if not json_data:
-            errors.append("No JSON configuration found in markdown file")
+        # Basic markdown validation first
+        if not content.strip():
+            errors.append("File is empty")
             return ValidationResult(
                 file_path=file_path,
                 file_type="spec",
@@ -121,15 +144,24 @@ def _validate_spec_file(file_path: str) -> ValidationResult:
                 errors=errors
             )
         
-        # Validate against schema
-        try:
-            spec = SpecSchema.model_validate(json_data)
-            
-            # Additional validations
-            _validate_spec_business_rules(spec, errors)
-            
-        except Exception as e:
-            errors.append(f"Schema validation failed: {str(e)}")
+        # Check for required sections
+        if "## Purpose" not in content:
+            errors.append("Missing required section: ## Purpose")
+        
+        if "## Requirements" not in content:
+            errors.append("Missing required section: ## Requirements")
+        
+        # Try to extract JSON configuration (optional for basic specs)
+        json_data = extract_json_from_markdown(content)
+        
+        if json_data:
+            # Validate against schema if JSON is present
+            try:
+                spec = SpecSchema.model_validate(json_data)
+                # Additional validations
+                _validate_spec_business_rules(spec, errors)
+            except Exception as e:
+                errors.append(f"Schema validation failed: {str(e)}")
         
     except Exception as e:
         errors.append(f"Failed to parse file: {str(e)}")
