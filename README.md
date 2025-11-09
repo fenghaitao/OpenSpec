@@ -122,6 +122,9 @@ These tools automatically read workflow instructions from `openspec/AGENTS.md`. 
 #### Prerequisites
 - **Node.js >= 20.19.0** - Check your version with `node --version`
 
+**Alternative: Python Port**  
+If you prefer Python, see the [Python port installation guide](python_port/README.md) which supports `uv` and `uvx` for faster installation.
+
 #### Step 1: Install the CLI globally
 
 ```bash
