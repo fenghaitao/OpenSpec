@@ -32,7 +32,7 @@ fi
 
 # Create the alias
 ALIAS_LINE="# OpenSpec development - run from local folder"
-ALIAS_CODE="alias openspec='uvx --from \"$OPENSPEC_DEV_DIR\" openspec'"
+ALIAS_CODE="alias openspec-py='$OPENSPEC_DEV_DIR/.venv/bin/openspec'"
 
 # Check if already added
 if [ -n "$SHELL_CONFIG" ]; then
@@ -40,7 +40,7 @@ if [ -n "$SHELL_CONFIG" ]; then
         echo "⚠ OpenSpec alias already exists in $SHELL_CONFIG"
         echo "Skipping addition to shell config."
     else
-        echo "Adding OpenSpec alias to $SHELL_CONFIG..."
+        echo "Adding openspec-py alias to $SHELL_CONFIG..."
         echo "" >> "$SHELL_CONFIG"
         echo "$ALIAS_LINE" >> "$SHELL_CONFIG"
         echo "$ALIAS_CODE" >> "$SHELL_CONFIG"
@@ -59,8 +59,8 @@ echo "Setup complete!"
 echo ""
 echo "To use OpenSpec from this development folder:"
 echo "  1. Reload your shell: source $SHELL_CONFIG"
-echo "  2. Run: openspec --version"
+echo "  2. Run: openspec-py --version"
 echo ""
-echo "The 'openspec' command will now run from: $OPENSPEC_DEV_DIR"
+echo "The 'openspec-py' command will now run from: $OPENSPEC_DEV_DIR"
 echo "This works from any directory!"
 

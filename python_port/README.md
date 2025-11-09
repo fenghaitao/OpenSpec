@@ -18,8 +18,8 @@ source ~/.bashrc  # or ~/.zshrc
 ```
 
 This will:
-- Add an `openspec` function to your shell config
-- Allow you to run `openspec` from any directory
+- Add an `openspec-py` alias to your shell config
+- Allow you to run `openspec-py` from any directory
 - Use the development version without installing
 
 **Prerequisites:**
@@ -28,8 +28,8 @@ This will:
 ### Verify Installation
 
 ```bash
-openspec --version
-openspec --help
+openspec-py --version
+openspec-py --help
 ```
 
 ## Usage
@@ -48,8 +48,8 @@ After running the setup script, you can develop and test:
 # Run tests
 pytest
 
-# The openspec command automatically uses your development code
-openspec --help
+# The openspec-py command automatically uses your development code
+openspec-py --help
 ```
 
 ## Features
