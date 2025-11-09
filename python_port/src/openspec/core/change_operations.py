@@ -5,61 +5,12 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-from .templates.change_template import create_change_template
 from .parsers import parse_markdown_file
 from ..utils.file_system import (
     find_openspec_root, ensure_directory, write_file, 
     list_directories, file_exists, read_file
 )
 
-
-def create_change(project_path: str, name: Optional[str] = None) -> str:
-    """Create a new change proposal."""
-    
-    if not name:
-        # Generate a name based on timestamp
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        name = f"change-{timestamp}"
-    
-    # Sanitize name
-    name = name.lower().replace(" ", "-").replace("_", "-")
-    
-    # Create change directory
-    changes_dir = Path(project_path) / "openspec" / "changes"
-    change_dir = changes_dir / name
-    
-    if change_dir.exists():
-        raise ValueError(f"Change '{name}' already exists")
-    
-    ensure_directory(str(change_dir))
-    ensure_directory(str(change_dir / "specs"))
-    
-    # Create proposal.md
-    proposal_content = create_change_template(name)
-    proposal_path = change_dir / "proposal.md"
-    write_file(str(proposal_path), proposal_content)
-    
-    # Create tasks.md
-    tasks_content = f"""# {name} - Tasks
-
-## TODO
-
-- [ ] Define requirements in proposal.md
-- [ ] Create or update relevant specs
-- [ ] Implement changes
-- [ ] Test implementation
-- [ ] Validate all specs
-- [ ] Archive change when complete
-
-## Progress Notes
-
-<!-- Add progress notes here -->
-"""
-    
-    tasks_path = change_dir / "tasks.md"
-    write_file(str(tasks_path), tasks_content)
-    
-    return str(change_dir)
 
 
 def list_changes(project_path: str) -> List[Dict[str, Any]]:

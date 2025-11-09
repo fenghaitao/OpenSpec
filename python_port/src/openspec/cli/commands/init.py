@@ -228,7 +228,7 @@ tags: [openspec, change]
 
 Create a new OpenSpec change proposal with proper structure and validation.
 
-Use `openspec-py change create <id>` to scaffold the proposal structure.
+Create OpenSpec change proposals using AI assistants.
 """
         
         apply_content = """---
@@ -390,8 +390,8 @@ auto_execution_mode: 3
 ## Process
 
 1. Analyze the request to understand what changes are needed
-2. Create a new change proposal using `openspec change create`
-3. Fill out the proposal with proper Why/What sections
+2. Work with AI assistant to create change proposal structure and content
+3. Create files in openspec/changes/<change-name>/ directory as guided
 4. Validate the proposal before proceeding
 
 Keep this managed block so 'openspec update' can refresh the instructions.

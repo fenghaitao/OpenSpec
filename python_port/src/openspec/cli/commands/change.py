@@ -4,7 +4,7 @@ import click
 from pathlib import Path
 from rich.console import Console
 
-from ...core.change_operations import create_change, list_changes, show_change
+from ...core.change_operations import list_changes, show_change
 from ...utils.file_system import find_openspec_root
 
 console = Console()
@@ -14,26 +14,6 @@ console = Console()
 def change():
     """Manage changes in OpenSpec project."""
     pass
-
-
-@change.command()
-@click.argument("name", required=False)
-def create(name: str):
-    """Create a new change proposal."""
-    
-    project_path = find_openspec_root()
-    if not project_path:
-        console.print("[red]Error: Not in an OpenSpec project directory.[/red]")
-        raise click.Abort()
-    
-    try:
-        change_path = create_change(str(project_path), name)
-        console.print(f"[green]✓[/green] Created change: {change_path}")
-        console.print(f"[dim]Edit the proposal.md file to define your change.[/dim]")
-        
-    except Exception as e:
-        console.print(f"[red]Error creating change: {e}[/red]")
-        raise click.Abort()
 
 
 @change.command()

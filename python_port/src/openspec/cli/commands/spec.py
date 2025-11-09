@@ -4,7 +4,6 @@ import click
 from pathlib import Path
 from rich.console import Console
 
-from ...core.templates.change_template import create_spec_template
 from ...utils.file_system import find_openspec_root, ensure_directory, write_file, list_directories
 
 console = Console()
@@ -14,43 +13,6 @@ console = Console()
 def spec():
     """Manage specs in OpenSpec project."""
     pass
-
-
-@spec.command()
-@click.argument("name")
-def create(name: str):
-    """Create a new spec."""
-    
-    project_path = find_openspec_root()
-    if not project_path:
-        console.print("[red]Error: Not in an OpenSpec project directory.[/red]")
-        raise click.Abort()
-    
-    try:
-        # Sanitize name
-        name = name.lower().replace(" ", "-").replace("_", "-")
-        
-        # Create spec directory
-        specs_dir = Path(project_path) / "openspec" / "specs"
-        spec_dir = specs_dir / name
-        
-        if spec_dir.exists():
-            console.print(f"[red]Error: Spec '{name}' already exists.[/red]")
-            raise click.Abort()
-        
-        ensure_directory(str(spec_dir))
-        
-        # Create spec.md
-        spec_content = create_spec_template(name)
-        spec_path = spec_dir / "spec.md"
-        write_file(str(spec_path), spec_content)
-        
-        console.print(f"[green]✓[/green] Created spec: {spec_path}")
-        console.print(f"[dim]Edit the spec.md file to define your specification.[/dim]")
-        
-    except Exception as e:
-        console.print(f"[red]Error creating spec: {e}[/red]")
-        raise click.Abort()
 
 
 @spec.command()

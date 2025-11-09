@@ -1,6 +1,5 @@
 """Project template for OpenSpec."""
 
-
 def create_project_template(context: dict = None) -> str:
     """Create the default project.md template."""
     
