@@ -34,6 +34,8 @@ class TemplateManager:
             
             if match:
                 content = match.group(1).strip()
+                # Unescape backticks from TypeScript template literals
+                content = content.replace('\\`', '`')
                 # Replace any TypeScript CLI commands with Python equivalents
                 content = content.replace('`openspec ', '`openspec-py ')
                 content = content.replace(' openspec ', ' openspec-py ')
