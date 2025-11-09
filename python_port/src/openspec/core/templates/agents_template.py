@@ -30,8 +30,8 @@ def create_agents_openspec_template() -> str:
             # Unescape backticks from TypeScript template literals
             content = content.replace('\\`', '`')
             # Replace any TypeScript CLI commands with Python equivalents
-            content = content.replace('`openspec ', '`openspec-py ')
-            content = content.replace(' openspec ', ' openspec-py ')
+            # content = content.replace('`openspec ', '`openspec-py ')
+            # content = content.replace(' openspec ', ' openspec-py ')
             return content
             
     except Exception as e:

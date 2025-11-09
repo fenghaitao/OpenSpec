@@ -37,8 +37,8 @@ class TemplateManager:
                 # Unescape backticks from TypeScript template literals
                 content = content.replace('\\`', '`')
                 # Replace any TypeScript CLI commands with Python equivalents
-                content = content.replace('`openspec ', '`openspec-py ')
-                content = content.replace(' openspec ', ' openspec-py ')
+                # content = content.replace('`openspec ', '`openspec-py ')
+                # content = content.replace(' openspec ', ' openspec-py ')
                 return content
                 
         except Exception as e:
@@ -102,8 +102,8 @@ class TemplateManager:
         content = content.replace('\\`', '`')
         
         # Replace TypeScript CLI commands with Python equivalents
-        content = content.replace('`openspec ', '`openspec-py ')
-        content = content.replace(' openspec ', ' openspec-py ')
+        # content = content.replace('`openspec ', '`openspec-py ')
+        # content = content.replace(' openspec ', ' openspec-py ')
         
         return content.strip()
     
