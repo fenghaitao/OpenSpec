@@ -4,7 +4,7 @@ from typing import List
 from ..config import AIToolOption
 
 # Main agents template for openspec/AGENTS.md
-agents_template = """# OpenSpec Agent Instructions
+agents_template = """# OpenSpec Instructions
 
 ## Overview
 
@@ -79,7 +79,7 @@ openspec validate
 def create_agents_template(selected_tools: List["AIToolOption"]) -> str:
     """Create AGENTS.md template with selected AI tools."""
     
-    template = """# AI Agent Instructions
+    template = """# OpenSpec Instructions
 
 These instructions are for AI assistants working in this project.
 
@@ -134,9 +134,34 @@ This project is configured for the following AI tools:
 
 
 def create_agents_openspec_template() -> str:
-    """Create the openspec/AGENTS.md template."""
+    """Create the openspec/AGENTS.md template - reads from canonical TypeScript template."""
     
+    # Read the canonical template from the TypeScript implementation
+    try:
+        import os
+        ts_template_path = "/home/hfeng1/OpenSpec/openspec/AGENTS.md"
+        if os.path.exists(ts_template_path):
+            with open(ts_template_path, 'r', encoding='utf-8') as f:
+                return f.read()
+    except Exception:
+        pass
+    
+    # Fallback to embedded template that matches TypeScript content
     return """# OpenSpec Instructions
+
+These instructions are for AI assistants working in this project.
+
+Always open `@/openspec/AGENTS.md` when the request:
+- Mentions planning or proposals (words like proposal, spec, change, plan)  
+- Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
+- Sounds ambiguous and you need the authoritative spec before coding
+
+Use `@/openspec/AGENTS.md` to learn:
+- How to create and apply change proposals
+- Spec format and conventions
+- Project structure and guidelines
+
+Keep this managed block so 'openspec update' can refresh the instructions.
 
 ## Overview
 

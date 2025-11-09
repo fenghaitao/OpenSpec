@@ -4,7 +4,7 @@
 def create_project_template(context: dict = None) -> str:
     """Create the default project.md template."""
     
-    return """# Project Overview
+    return """# Project Context
 
 <!-- Describe your project here -->
 

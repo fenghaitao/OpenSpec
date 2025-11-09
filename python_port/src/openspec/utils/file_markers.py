@@ -5,7 +5,7 @@ from typing import Optional
 from .file_system import write_file, read_file, file_exists
 
 
-async def create_file_with_markers(file_path: str, content: str) -> None:
+def create_file_with_markers(file_path: str, content: str) -> None:
     """Create a new file with OpenSpec markers."""
     marked_content = f"""<!-- OPENSPEC:START -->
 {content}
@@ -14,11 +14,11 @@ async def create_file_with_markers(file_path: str, content: str) -> None:
     write_file(file_path, marked_content)
 
 
-async def update_file_with_markers(file_path: str, new_content: str) -> None:
+def update_file_with_markers(file_path: str, new_content: str) -> None:
     """Update an existing file with OpenSpec markers."""
     
     if not file_exists(file_path):
-        await create_file_with_markers(file_path, new_content)
+        create_file_with_markers(file_path, new_content)
         return
     
     existing_content = read_file(file_path)
@@ -29,7 +29,45 @@ async def update_file_with_markers(file_path: str, new_content: str) -> None:
         write_file(file_path, updated_content)
     else:
         # Add markers around new content
-        await create_file_with_markers(file_path, new_content)
+        create_file_with_markers(file_path, new_content)
+
+
+def has_openspec_markers(content: str) -> bool:
+    """Check if content has OpenSpec markers."""
+    return "<!-- OPENSPEC:START -->" in content and "<!-- OPENSPEC:END -->" in content
+
+
+def extract_content_between_markers(content: str) -> Optional[str]:
+    """Extract content between OpenSpec markers."""
+    start_marker = "<!-- OPENSPEC:START -->"
+    end_marker = "<!-- OPENSPEC:END -->"
+    
+    start_pos = content.find(start_marker)
+    end_pos = content.find(end_marker)
+    
+    if start_pos == -1 or end_pos == -1:
+        return None
+    
+    start_pos += len(start_marker)
+    return content[start_pos:end_pos].strip()
+
+
+def replace_content_between_markers(content: str, new_content: str) -> str:
+    """Replace content between OpenSpec markers."""
+    start_marker = "<!-- OPENSPEC:START -->"
+    end_marker = "<!-- OPENSPEC:END -->"
+    
+    start_pos = content.find(start_marker)
+    end_pos = content.find(end_marker)
+    
+    if start_pos == -1 or end_pos == -1:
+        # No markers found, return original content
+        return content
+    
+    before = content[:start_pos + len(start_marker)]
+    after = content[end_pos:]
+    
+    return f"{before}\n{new_content}\n{after}"
 
 from pathlib import Path
 from typing import Optional
