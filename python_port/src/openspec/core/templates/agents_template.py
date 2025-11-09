@@ -26,9 +26,13 @@ def create_agents_openspec_template() -> str:
         match = re.search(pattern, ts_content, re.DOTALL | re.MULTILINE)
         
         if match:
-            content = match.group(1).strip()
-            # Unescape backticks from TypeScript template literals
+            content = match.group(1)
+            # Don't strip - preserve trailing newline from TypeScript template
+            # Unescape TypeScript template literal escape sequences
             content = content.replace('\\`', '`')
+            # In TypeScript template literals, \\n becomes \n (literal backslash-n, not newline)
+            # Python reads \\n from file as '\\\\n', we need to convert to '\\n' (backslash-n)
+            content = content.replace('\\\\n', '\\n')  # \\n in file -> \n in output
             # Replace any TypeScript CLI commands with Python equivalents
             # content = content.replace('`openspec ', '`openspec-py ')
             # content = content.replace(' openspec ', ' openspec-py ')

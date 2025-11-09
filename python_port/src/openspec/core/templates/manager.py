@@ -33,7 +33,8 @@ class TemplateManager:
             match = re.search(pattern, ts_content, re.DOTALL)
             
             if match:
-                content = match.group(1).strip()
+                content = match.group(1)
+                # Don't strip - preserve trailing newline from TypeScript template
                 # Unescape backticks from TypeScript template literals
                 content = content.replace('\\`', '`')
                 # Replace any TypeScript CLI commands with Python equivalents

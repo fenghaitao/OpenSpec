@@ -79,8 +79,11 @@ class InitCommand:
             # Only create when tools are actually selected
             if selected_tools:
                 for tool in selected_tools:
+                    tool_value = tool.value if hasattr(tool, 'value') else tool
+                    
+                    # Create config file for tools that have one
                     if hasattr(tool, 'config_file_name') and tool.config_file_name:
-                        config_content = _create_ai_tool_config(tool)
+                        config_content = _create_ai_tool_config()
                         config_path = current_dir / tool.config_file_name
                         
                         # If file exists, update only the managed block
@@ -90,15 +93,14 @@ class InitCommand:
                             write_file(str(config_path), config_content)
                     
                     # Create slash command files for supported tools
-                    if hasattr(tool, 'value'):
-                        if tool.value == "claude":
-                            self._create_claude_slash_commands(current_dir)
-                        elif tool.value == "cursor":
-                            self._create_cursor_slash_commands(current_dir)
-                    elif tool == "claude":
+                    if tool_value == "claude":
                         self._create_claude_slash_commands(current_dir)
-                    elif tool == "cursor":
+                    elif tool_value == "cursor":
                         self._create_cursor_slash_commands(current_dir)
+                    elif tool_value == "cline":
+                        self._create_cline_slash_commands(current_dir)
+                    elif tool_value == "github-copilot":
+                        self._create_github_copilot_prompts(current_dir)
             
             # Create Windsurf workflow files if windsurf is selected
             windsurf_selected = any(
@@ -168,16 +170,26 @@ class InitCommand:
             self._create_fallback_claude_commands(claude_dir)
     
     def _add_claude_frontmatter(self, content: str, command_id: str, description: str) -> str:
-        """Add Claude slash command frontmatter to template content."""
+        """Add Claude slash command frontmatter to template content with OpenSpec markers."""
+        # Map command IDs to their tags (matching TypeScript)
+        tag_map = {
+            "proposal": "change",
+            "apply": "apply",
+            "archive": "archive"
+        }
+        tag = tag_map.get(command_id, command_id)
+        
         frontmatter = f"""---
 name: OpenSpec: {command_id.title()}
 description: {description}
 category: OpenSpec
-tags: [openspec, {command_id}]
+tags: [openspec, {tag}]
 ---
-
+<!-- OPENSPEC:START -->
 """
-        return frontmatter + content
+        footer = """<!-- OPENSPEC:END -->
+"""
+        return frontmatter + content + "\n" + footer
     
     def _get_root_agents_template(self) -> str:
         """Get the root AGENTS.md template using TemplateManager."""
@@ -185,20 +197,18 @@ tags: [openspec, {command_id}]
             from ...core.templates.manager import TemplateManager
             
             # Get template content from TemplateManager
+            # Template already ends with \n, TypeScript adds one more \n before END marker
             content = TemplateManager.get_agents_root_stub()
             
-            # Wrap with OpenSpec markers
-            return f"""<!-- OPENSPEC:START -->
-{content}
-<!-- OPENSPEC:END -->
-"""
+            # Match TypeScript: START\n + content (ends with \n) + \n + END (no trailing newline)
+            # Since content ends with \n, we only add one more \n
+            return f"<!-- OPENSPEC:START -->\n{content}\n<!-- OPENSPEC:END -->"
                 
         except Exception as e:
             self.console.print(f"[yellow]Warning: Could not read root agents template from TemplateManager ({e}). Using fallback.[/yellow]")
         
-        # Fallback template
-        return """<!-- OPENSPEC:START -->
-# OpenSpec Instructions
+        # Fallback template - content should end with newline
+        content = """# OpenSpec Instructions
 
 These instructions are for AI assistants working in this project.
 
@@ -212,10 +222,10 @@ Use `@/openspec/AGENTS.md` to learn:
 - Spec format and conventions
 - Project structure and guidelines
 
-Keep this managed block so 'openspec-py update' can refresh the instructions.
-
-<!-- OPENSPEC:END -->
+Keep this managed block so 'openspec update' can refresh the instructions.
 """
+        # Match TypeScript: START\n + content (ends with \n) + \n + END
+        return f"<!-- OPENSPEC:START -->\n{content}\n<!-- OPENSPEC:END -->"
 
     def _create_fallback_claude_commands(self, claude_dir: Path) -> None:
         """Create basic fallback Claude commands if TypeScript templates unavailable."""
@@ -264,20 +274,94 @@ Use `openspec-py archive <id>` to move the change to the archive.
         cursor_dir = current_dir / ".cursor" / "commands"
         ensure_directory(str(cursor_dir))
         
-        proposal_content = """# OpenSpec Proposal
-
-Create a new OpenSpec change proposal with proper structure and validation.
-
-## Usage
-This command scaffolds new change proposals following OpenSpec conventions.
-
-## Guidelines
-- Include clear Why and What Changes sections
-- Follow OpenSpec formatting standards
-- Validate before submission
+        try:
+            from ...core.templates.manager import TemplateManager
+            
+            # Create all three cursor commands
+            commands = {
+                "proposal": "Scaffold a new OpenSpec change and validate strictly.",
+                "apply": "Implement an approved OpenSpec change and keep tasks in sync.",
+                "archive": "Archive a deployed OpenSpec change and update specs."
+            }
+            
+            for cmd_id, description in commands.items():
+                body = TemplateManager.get_slash_command_body(cmd_id)
+                frontmatter = f"""---
+name: /openspec-{cmd_id}
+id: openspec-{cmd_id}
+category: OpenSpec
+description: {description}
+---
+<!-- OPENSPEC:START -->
 """
+                footer = """<!-- OPENSPEC:END -->
+"""
+                content = frontmatter + body + "\n" + footer
+                write_file(str(cursor_dir / f"openspec-{cmd_id}.md"), content)
+                
+        except Exception as e:
+            self.console.print(f"[yellow]Warning: Could not create cursor commands ({e}). Skipping.[/yellow]")
+    
+    def _create_cline_slash_commands(self, current_dir: Path) -> None:
+        """Create Cline slash command files."""
+        cline_dir = current_dir / ".clinerules"
+        ensure_directory(str(cline_dir))
         
-        write_file(str(cursor_dir / "openspec-proposal.md"), proposal_content)
+        try:
+            from ...core.templates.manager import TemplateManager
+            
+            commands = {
+                "proposal": "Scaffold a new OpenSpec change and validate strictly.",
+                "apply": "Implement an approved OpenSpec change and keep tasks in sync.",
+                "archive": "Archive a deployed OpenSpec change and update specs."
+            }
+            
+            for cmd_id, description in commands.items():
+                body = TemplateManager.get_slash_command_body(cmd_id)
+                title = cmd_id.capitalize()
+                frontmatter = f"""# OpenSpec: {title}
+
+{description}
+<!-- OPENSPEC:START -->
+"""
+                footer = """<!-- OPENSPEC:END -->
+"""
+                content = frontmatter + body + "\n" + footer
+                write_file(str(cline_dir / f"openspec-{cmd_id}.md"), content)
+                
+        except Exception as e:
+            self.console.print(f"[yellow]Warning: Could not create cline commands ({e}). Skipping.[/yellow]")
+    
+    def _create_github_copilot_prompts(self, current_dir: Path) -> None:
+        """Create GitHub Copilot prompt files."""
+        prompts_dir = current_dir / ".github" / "prompts"
+        ensure_directory(str(prompts_dir))
+        
+        try:
+            from ...core.templates.manager import TemplateManager
+            
+            commands = {
+                "proposal": "Scaffold a new OpenSpec change and validate strictly.",
+                "apply": "Implement an approved OpenSpec change and keep tasks in sync.",
+                "archive": "Archive a deployed OpenSpec change and update specs."
+            }
+            
+            for cmd_id, description in commands.items():
+                body = TemplateManager.get_slash_command_body(cmd_id)
+                frontmatter = f"""---
+description: {description}
+---
+
+$ARGUMENTS
+<!-- OPENSPEC:START -->
+"""
+                footer = """<!-- OPENSPEC:END -->
+"""
+                content = frontmatter + body + "\n" + footer
+                write_file(str(prompts_dir / f"openspec-{cmd_id}.prompt.md"), content)
+                
+        except Exception as e:
+            self.console.print(f"[yellow]Warning: Could not create GitHub Copilot prompts ({e}). Skipping.[/yellow]")
 
 
 def prompt_for_ai_tools(available_tools: List) -> List:
@@ -337,33 +421,17 @@ async def configure_ai_tools(project_path: str, openspec_dir: str, tool_ids: Lis
             await slash_configurator.generate_all(project_path, openspec_dir)
 
 
-def _create_ai_tool_config(tool) -> str:
+def _create_ai_tool_config() -> str:
     """Create AI tool configuration file content with OpenSpec markers."""
+    from ...core.templates.manager import TemplateManager
     
-    openspec_content = f"""# {tool.name} Configuration
-
-Always open `@/openspec/AGENTS.md` when the request:
-- Mentions planning or proposals (words like proposal, spec, change, plan)
-- Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
-- Sounds ambiguous and you need the authoritative spec before coding
-
-Use `@/openspec/AGENTS.md` to learn:
-- How to create and apply change proposals
-- Spec format and conventions
-- Project structure and guidelines
-
-Keep this managed block so 'openspec update' can refresh the instructions."""
-
-    return f"""# {tool.name}
-
-<!-- OPENSPEC:START -->
-{openspec_content}
-<!-- OPENSPEC:END -->
-
-## Project-Specific Guidelines
-
-<!-- Add your project-specific guidelines here -->
-"""
+    # Use the same template as TypeScript (agentsRootStubTemplate)
+    # Template already ends with \n
+    content = TemplateManager.get_agents_root_stub()
+    
+    # Match TypeScript: START\n + content (ends with \n) + \n + END (no trailing newline)
+    # Since content ends with \n, we only add one more \n
+    return f"<!-- OPENSPEC:START -->\n{content}\n<!-- OPENSPEC:END -->"
 
 
 def _create_windsurf_workflows(current_dir: Path) -> None:
@@ -372,86 +440,32 @@ def _create_windsurf_workflows(current_dir: Path) -> None:
     workflows_dir = current_dir / ".windsurf" / "workflows"
     ensure_directory(str(workflows_dir))
     
-    # Proposal workflow
-    proposal_content = """---
-description: Scaffold a new OpenSpec change and validate strictly.
+    try:
+        from ...core.templates.manager import TemplateManager
+        
+        commands = {
+            "proposal": "Scaffold a new OpenSpec change and validate strictly.",
+            "apply": "Implement an approved OpenSpec change and keep tasks in sync.",
+            "archive": "Archive a deployed OpenSpec change and update specs."
+        }
+        
+        for cmd_id, description in commands.items():
+            body = TemplateManager.get_slash_command_body(cmd_id)
+            frontmatter = f"""---
+description: {description}
 auto_execution_mode: 3
 ---
-
 <!-- OPENSPEC:START -->
-# OpenSpec Proposal Workflow
-
-**Guardrails**
-
-1. Never modify existing specs directly - always create change proposals
-2. Follow OpenSpec conventions for all proposals
-3. Validate before committing any changes
-
-## Process
-
-1. Analyze the request to understand what changes are needed
-2. Work with AI assistant to create change proposal structure and content
-3. Create files in openspec/changes/<change-name>/ directory as guided
-4. Validate the proposal before proceeding
-
-Keep this managed block so 'openspec update' can refresh the instructions.
-<!-- OPENSPEC:END -->
 """
-    
-    # Apply workflow  
-    apply_content = """---
-description: Apply approved OpenSpec changes to specifications.
-auto_execution_mode: 2
----
-
-<!-- OPENSPEC:START -->
-# OpenSpec Apply Workflow
-
-**Guardrails**
-
-1. Only apply changes that have been reviewed and approved
-2. Validate all specs after applying changes
-3. Archive the change proposal when complete
-
-## Process
-
-1. Review the change proposal thoroughly
-2. Apply changes to the relevant specifications
-3. Validate all affected specs
-4. Archive the change proposal
-
-Keep this managed block so 'openspec update' can refresh the instructions.
-<!-- OPENSPEC:END -->
+            footer = """<!-- OPENSPEC:END -->
 """
-    
-    # Archive workflow
-    archive_content = """---
-description: Archive completed OpenSpec changes.
-auto_execution_mode: 1
----
-
-<!-- OPENSPEC:START -->
-# OpenSpec Archive Workflow
-
-**Guardrails**
-
-1. Ensure all changes have been properly applied to specs
-2. Validate specs before archiving
-3. Use proper archiving commands
-
-## Process
-
-1. Verify change has been fully implemented
-2. Run final validation on affected specs
-3. Archive using `openspec archive <change-name>`
-
-Keep this managed block so 'openspec update' can refresh the instructions.
-<!-- OPENSPEC:END -->
-"""
-    
-    write_file(str(workflows_dir / "openspec-proposal.md"), proposal_content)
-    write_file(str(workflows_dir / "openspec-apply.md"), apply_content)
-    write_file(str(workflows_dir / "openspec-archive.md"), archive_content)
+            content = frontmatter + body + "\n" + footer
+            write_file(str(workflows_dir / f"openspec-{cmd_id}.md"), content)
+            
+    except Exception as e:
+        from rich.console import Console
+        console = Console()
+        console.print(f"[yellow]Warning: Could not create windsurf workflows ({e}). Skipping.[/yellow]")
 
 
 def _update_managed_block(file_path: str, new_content: str) -> None:
