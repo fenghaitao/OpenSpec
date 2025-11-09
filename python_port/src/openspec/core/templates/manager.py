@@ -15,7 +15,7 @@ class TemplateManager:
     @staticmethod
     def get_templates(context: Dict[str, Any] = None) -> List[Template]:
         """Get all templates for the openspec directory."""
-        from .agents_template import agents_template
+        from .agents_template import create_agents_openspec_template
         from .project_template import create_project_template
         
         context = context or {}
@@ -23,7 +23,7 @@ class TemplateManager:
         return [
             Template(
                 path='AGENTS.md',
-                content=agents_template
+                content=create_agents_openspec_template()
             ),
             Template(
                 path='project.md', 

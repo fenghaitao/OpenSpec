@@ -6,23 +6,33 @@ def create_project_template(context: dict = None) -> str:
     
     return """# Project Context
 
-<!-- Describe your project here -->
-
-This project uses OpenSpec for AI-native spec-driven development.
-
 ## Purpose
+[Describe your project's purpose and goals]
 
-<!-- What does this project do? -->
+## Tech Stack
+- [List your primary technologies]
+- [e.g., TypeScript, React, Node.js]
 
-## Architecture
+## Project Conventions
 
-<!-- High-level architecture overview -->
+### Code Style
+[Describe your code style preferences, formatting rules, and naming conventions]
 
-## Getting Started
+### Architecture Patterns
+[Document your architectural decisions and patterns]
 
-<!-- How to get started with this project -->
+### Testing Strategy
+[Explain your testing approach and requirements]
 
-## Contributing
+### Git Workflow
+[Describe your branching strategy and commit conventions]
 
-<!-- How to contribute to this project -->
+## Domain Context
+[Add domain-specific knowledge that AI assistants need to understand]
+
+## Important Constraints
+[List any technical, business, or regulatory constraints]
+
+## External Dependencies
+[Document key external services, APIs, or systems]
 """

@@ -8,7 +8,7 @@ from rich.console import Console
 from typing import List
 
 from ...core.config import AI_TOOLS, OPENSPEC_DIR_NAME
-from ...core.templates import create_project_template, create_agents_template
+from ...core.templates import create_project_template
 from ...core.configurators.registry import ToolRegistry
 from ...core.configurators.slash.registry import SlashCommandRegistry
 from ...utils.file_system import ensure_directory, write_file
@@ -71,9 +71,27 @@ class InitCommand:
                 file_path = openspec_dir / template.path
                 write_file(str(file_path), template.content)
             
-            # Create AGENTS.md in project root (always created there too)
-            agents_content = self._create_agents_template_content()
-            write_file(str(current_dir / "AGENTS.md"), agents_content)
+            # Create short AGENTS.md stub in project root that redirects to openspec/AGENTS.md
+            root_agents_content = """<!-- OPENSPEC:START -->
+# OpenSpec Instructions
+
+These instructions are for AI assistants working in this project.
+
+Always open `@/openspec/AGENTS.md` when the request:
+- Mentions planning or proposals (words like proposal, spec, change, plan)
+- Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
+- Sounds ambiguous and you need the authoritative spec before coding
+
+Use `@/openspec/AGENTS.md` to learn:
+- How to create and apply change proposals
+- Spec format and conventions
+- Project structure and guidelines
+
+Keep this managed block so 'openspec-py update' can refresh the instructions.
+
+<!-- OPENSPEC:END -->
+"""
+            write_file(str(current_dir / "AGENTS.md"), root_agents_content)
             
             # Create tool-specific configuration files with OpenSpec markers
             # Only create when tools are actually selected
@@ -130,56 +148,6 @@ class InitCommand:
             self.console.print(f"[red]Error initializing project: {e}[/red]")
             raise click.Abort()
     
-    def _create_agents_template_content(self) -> str:
-        """Create the AGENTS.md template content with OpenSpec markers."""
-        openspec_instructions = """# OpenSpec Instructions
-
-These instructions are for AI assistants working in this project.
-
-Always open `@/openspec/AGENTS.md` when the request:
-- Mentions planning or proposals (words like proposal, spec, change, plan)
-- Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
-- Sounds ambiguous and you need the authoritative spec before coding
-
-Use `@/openspec/AGENTS.md` to learn:
-- How to create and apply change proposals
-- Spec format and conventions
-- Project structure and guidelines
-
-Keep this managed block so 'openspec update' can refresh the instructions."""
-
-        return f"""<!-- OPENSPEC:START -->
-{openspec_instructions}
-<!-- OPENSPEC:END -->
-
-## Overview
-
-This project uses OpenSpec for spec-driven development. Before making significant changes, always:
-
-1. Check for existing change proposals in `openspec/changes/`
-2. Review relevant specs in `openspec/specs/`
-3. Create or update change proposals for new features
-
-## Creating Change Proposals
-
-Use the OpenSpec CLI to create change proposals:
-
-```bash
-openspec change create my-feature-name
-```
-
-This creates a structured proposal that includes:
-- **Why**: The motivation for the change
-- **What Changes**: Detailed specifications of what will be modified
-- **Delta specs**: Structured requirements that will be merged into main specs
-
-## Guidelines
-
-- Follow OpenSpec conventions for proposals and specifications
-- Keep changes focused and well-documented
-- Validate specs before archiving changes
-- Use `openspec validate` to check your work
-"""
     
     def _create_claude_slash_commands(self, current_dir: Path) -> None:
         """Create Claude slash command files by reading from TypeScript templates."""
