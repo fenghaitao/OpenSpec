@@ -134,6 +134,10 @@ class TemplateManager:
         """Get the Cline configuration template (uses agents root stub)."""
         return TemplateManager._read_ts_template("agents-root-stub.ts", "agentsRootStubTemplate")
     
+    @staticmethod
+    def get_agents_root_stub() -> str:
+        """Get the root AGENTS.md stub template."""
+        return TemplateManager._read_ts_template("agents-root-stub.ts", "agentsRootStubTemplate")
     
     @staticmethod
     def get_slash_command_body(command_id: str) -> str:

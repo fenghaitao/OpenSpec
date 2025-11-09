@@ -132,25 +132,30 @@ class InitCommand:
     
     
     def _create_claude_slash_commands(self, current_dir: Path) -> None:
-        """Create Claude slash command files by reading from TypeScript templates."""
+        """Create Claude slash command files using TemplateManager."""
         claude_dir = current_dir / ".claude" / "commands" / "openspec"
         ensure_directory(str(claude_dir))
         
-        # Path to TypeScript slash command templates - find it relative to this Python file
-        # Navigate from python_port/src/openspec/cli/commands/init.py to main OpenSpec src/core/templates/slash-command-templates.ts
-        current_file = Path(__file__)
-        python_port_root = current_file.parent.parent.parent.parent.parent  # Go up to python_port root
-        openspec_root = python_port_root.parent  # Go up one more to main OpenSpec directory
-        ts_templates_path = openspec_root / "src" / "core" / "templates" / "slash-command-templates.ts"
-        
         try:
-            # Read the TypeScript template file
-            ts_content = ts_templates_path.read_text()
+            # Use TemplateManager to get slash command content
+            from ...core.templates.manager import TemplateManager
             
-            # Extract template content for each command
-            proposal_content = self._extract_ts_template(ts_content, "PROPOSAL_TEMPLATE", "openspec-py")
-            apply_content = self._extract_ts_template(ts_content, "APPLY_TEMPLATE", "openspec-py")  
-            archive_content = self._extract_ts_template(ts_content, "ARCHIVE_TEMPLATE", "openspec-py")
+            # Get template content for each command
+            proposal_content = self._add_claude_frontmatter(
+                TemplateManager.get_slash_command_body("proposal"),
+                "proposal",
+                "Scaffold a new OpenSpec change and validate strictly."
+            )
+            apply_content = self._add_claude_frontmatter(
+                TemplateManager.get_slash_command_body("apply"),
+                "apply", 
+                "Implement an approved OpenSpec change and keep tasks in sync."
+            )
+            archive_content = self._add_claude_frontmatter(
+                TemplateManager.get_slash_command_body("archive"),
+                "archive",
+                "Archive a deployed OpenSpec change and update specs."
+            )
             
             # Write the files
             write_file(str(claude_dir / "proposal.md"), proposal_content)
@@ -158,111 +163,38 @@ class InitCommand:
             write_file(str(claude_dir / "archive.md"), archive_content)
             
         except Exception as e:
-            # Fallback to basic templates if TypeScript templates can't be read
-            self.console.print(f"[yellow]Warning: Could not read TypeScript templates ({e}). Using fallback templates.[/yellow]")
+            # Fallback to basic templates if TemplateManager fails
+            self.console.print(f"[yellow]Warning: Could not read templates from TemplateManager ({e}). Using fallback templates.[/yellow]")
             self._create_fallback_claude_commands(claude_dir)
     
-    def _extract_ts_template(self, ts_content: str, template_name: str, cli_command: str) -> str:
-        """Extract a specific template from TypeScript content and adapt for Python CLI."""
-        import re
-        
-        # Map template names to the slash command IDs used in TypeScript
-        template_map = {
-            "PROPOSAL_TEMPLATE": ("proposal", "proposalGuardrails", "proposalSteps", "proposalReferences"),
-            "APPLY_TEMPLATE": ("apply", "baseGuardrails", "applySteps", "applyReferences"),
-            "ARCHIVE_TEMPLATE": ("archive", "baseGuardrails", "archiveSteps", "archiveReferences")
-        }
-        
-        if template_name not in template_map:
-            raise ValueError(f"Unknown template name: {template_name}")
-        
-        command_id, *const_names = template_map[template_name]
-        
-        # Extract each constant's content and resolve template literals
-        content_parts = []
-        
-        # First extract baseGuardrails since other constants may reference it
-        base_guardrails = ""
-        base_match = re.search(r"const baseGuardrails = `(.*?)`(?=;)", ts_content, re.DOTALL)
-        if base_match:
-            base_guardrails = base_match.group(1).strip()
-        
-        for const_name in const_names:
-            # Use non-greedy match and lookahead for semicolon to handle backticks inside
-            pattern = rf"const {const_name} = `(.*?)`(?=;)"
-            match = re.search(pattern, ts_content, re.DOTALL)
-            if match:
-                content = match.group(1).strip()
-                # Resolve template literal interpolations
-                content = content.replace("${baseGuardrails}\\n", base_guardrails + "\n")
-                content = content.replace("${baseGuardrails}", base_guardrails)
-                content_parts.append(content)
-        
-        if not content_parts:
-            raise ValueError(f"Could not find constants for {command_id} template")
-        
-        # Join the parts as the TypeScript code does
-        content = "\n\n".join(content_parts)
-        
-        # Add YAML frontmatter
+    def _add_claude_frontmatter(self, content: str, command_id: str, description: str) -> str:
+        """Add Claude slash command frontmatter to template content."""
         frontmatter = f"""---
 name: OpenSpec: {command_id.title()}
-description: {self._get_description_for_command(command_id)}
+description: {description}
 category: OpenSpec
 tags: [openspec, {command_id}]
 ---
 
 """
-        content = frontmatter + content
-        
-        # Replace TypeScript CLI commands with Python equivalents
-        content = content.replace('`openspec ', f'`{cli_command} ')
-        content = content.replace(' openspec ', f' {cli_command} ')
-        
-        return content.strip()
-    
-    def _get_description_for_command(self, command_id: str) -> str:
-        """Get description for a command."""
-        descriptions = {
-            "proposal": "Scaffold a new OpenSpec change and validate strictly.",
-            "apply": "Implement an approved OpenSpec change and keep tasks in sync.",
-            "archive": "Archive a deployed OpenSpec change and update specs."
-        }
-        return descriptions.get(command_id, f"OpenSpec {command_id} command")
+        return frontmatter + content
     
     def _get_root_agents_template(self) -> str:
-        """Get the root AGENTS.md template from TypeScript."""
+        """Get the root AGENTS.md template using TemplateManager."""
         try:
-            from pathlib import Path
-            import re
+            from ...core.templates.manager import TemplateManager
             
-            # Path to TypeScript root agents template
-            current_file = Path(__file__)
-            python_port_root = current_file.parent.parent.parent.parent.parent  # Go up to python_port root
-            openspec_root = python_port_root.parent  # Go up one more to main OpenSpec directory
-            ts_template_path = openspec_root / "src" / "core" / "templates" / "agents-root-stub.ts"
+            # Get template content from TemplateManager
+            content = TemplateManager.get_agents_root_stub()
             
-            # Read and extract the TypeScript template
-            ts_content = ts_template_path.read_text()
-            
-            # Extract the agentsRootStubTemplate content
-            pattern = r'export const agentsRootStubTemplate = `(.*?)`(?=;|\n\nexport|\n\n\/\/|$)'
-            match = re.search(pattern, ts_content, re.DOTALL)
-            
-            if match:
-                content = match.group(1).strip()
-                # Replace any TypeScript CLI commands with Python equivalents
-                content = content.replace('`openspec ', '`openspec-py ')
-                content = content.replace(' openspec ', ' openspec-py ')
-                
-                # Wrap with OpenSpec markers like the TypeScript version does
-                return f"""<!-- OPENSPEC:START -->
+            # Wrap with OpenSpec markers
+            return f"""<!-- OPENSPEC:START -->
 {content}
 <!-- OPENSPEC:END -->
 """
                 
         except Exception as e:
-            self.console.print(f"[yellow]Warning: Could not read TypeScript root agents template ({e}). Using fallback.[/yellow]")
+            self.console.print(f"[yellow]Warning: Could not read root agents template from TemplateManager ({e}). Using fallback.[/yellow]")
         
         # Fallback template
         return """<!-- OPENSPEC:START -->
