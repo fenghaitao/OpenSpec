@@ -47,8 +47,9 @@ class InitCommand:
                 available_tools = {tool.value: tool for tool in AI_TOOLS if tool.available}
                 selected_tools = [available_tools[name] for name in tool_names if name in available_tools]
             else:
-                # Use the prompt function (which can be mocked for testing)
-                selected_tools = prompt_for_ai_tools([tool for tool in AI_TOOLS if tool.available])
+                # In non-interactive mode without tools specified, use defaults
+                available_tools = [tool for tool in AI_TOOLS if tool.available]
+                selected_tools = [tool for tool in available_tools if tool.value in ["claude", "cursor", "cline"]]
         else:
             # Interactive selection
             selected_tools = prompt_for_ai_tools([tool for tool in AI_TOOLS if tool.available])
@@ -111,6 +112,20 @@ class InitCommand:
             self.console.print(f"[green]✓[/green] Created {OPENSPEC_DIR_NAME}/ directory")
             self.console.print(f"[green]✓[/green] Created AGENTS.md with {len(selected_tools)} AI tool(s)")
             
+            # Show next steps
+            self.console.print("\n[bold blue]Use `openspec-py update` to refresh shared OpenSpec instructions in the future.[/bold blue]")
+            self.console.print("\n[bold yellow]Next steps - Copy these prompts to Claude Code:[/bold yellow]")
+            self.console.print("─" * 60)
+            self.console.print("[bold]1. Populate your project context:[/bold]")
+            self.console.print('   "Please read openspec/project.md and help me fill it out')
+            self.console.print('    with details about my project, tech stack, and conventions"')
+            self.console.print("\n[bold]2. Create your first change proposal:[/bold]")
+            self.console.print('   "I want to add [YOUR FEATURE HERE]. Please create an')
+            self.console.print('    OpenSpec change proposal for this feature"')
+            self.console.print("\n[bold]3. Learn the OpenSpec workflow:[/bold]")
+            self.console.print('   "Please explain the OpenSpec workflow from openspec/AGENTS.md')
+            self.console.print('    and how I should work with you on this project"')
+            
         except Exception as e:
             self.console.print(f"[red]Error initializing project: {e}[/red]")
             raise click.Abort()
@@ -167,42 +182,145 @@ This creates a structured proposal that includes:
 """
     
     def _create_claude_slash_commands(self, current_dir: Path) -> None:
-        """Create Claude slash command files."""
+        """Create Claude slash command files by reading from TypeScript templates."""
         claude_dir = current_dir / ".claude" / "commands" / "openspec"
         ensure_directory(str(claude_dir))
         
-        proposal_content = """Create a new OpenSpec change proposal.
+        # Path to TypeScript slash command templates - find it relative to this Python file
+        # Navigate from python_port/src/openspec/cli/commands/init.py to main OpenSpec src/core/templates/slash-command-templates.ts
+        current_file = Path(__file__)
+        python_port_root = current_file.parent.parent.parent.parent.parent  # Go up to python_port root
+        openspec_root = python_port_root.parent  # Go up one more to main OpenSpec directory
+        ts_templates_path = openspec_root / "src" / "core" / "templates" / "slash-command-templates.ts"
+        
+        try:
+            # Read the TypeScript template file
+            ts_content = ts_templates_path.read_text()
+            
+            # Extract template content for each command
+            proposal_content = self._extract_ts_template(ts_content, "PROPOSAL_TEMPLATE", "openspec-py")
+            apply_content = self._extract_ts_template(ts_content, "APPLY_TEMPLATE", "openspec-py")  
+            archive_content = self._extract_ts_template(ts_content, "ARCHIVE_TEMPLATE", "openspec-py")
+            
+            # Write the files
+            write_file(str(claude_dir / "proposal.md"), proposal_content)
+            write_file(str(claude_dir / "apply.md"), apply_content)
+            write_file(str(claude_dir / "archive.md"), archive_content)
+            
+        except Exception as e:
+            # Fallback to basic templates if TypeScript templates can't be read
+            self.console.print(f"[yellow]Warning: Could not read TypeScript templates ({e}). Using fallback templates.[/yellow]")
+            self._create_fallback_claude_commands(claude_dir)
+    
+    def _extract_ts_template(self, ts_content: str, template_name: str, cli_command: str) -> str:
+        """Extract a specific template from TypeScript content and adapt for Python CLI."""
+        import re
+        
+        # Map template names to the slash command IDs used in TypeScript
+        template_map = {
+            "PROPOSAL_TEMPLATE": ("proposal", "proposalGuardrails", "proposalSteps", "proposalReferences"),
+            "APPLY_TEMPLATE": ("apply", "baseGuardrails", "applySteps", "applyReferences"),
+            "ARCHIVE_TEMPLATE": ("archive", "baseGuardrails", "archiveSteps", "archiveReferences")
+        }
+        
+        if template_name not in template_map:
+            raise ValueError(f"Unknown template name: {template_name}")
+        
+        command_id, *const_names = template_map[template_name]
+        
+        # Extract each constant's content and resolve template literals
+        content_parts = []
+        
+        # First extract baseGuardrails since other constants may reference it
+        base_guardrails = ""
+        base_match = re.search(r"const baseGuardrails = `(.*?)`(?=;)", ts_content, re.DOTALL)
+        if base_match:
+            base_guardrails = base_match.group(1).strip()
+        
+        for const_name in const_names:
+            # Use non-greedy match and lookahead for semicolon to handle backticks inside
+            pattern = rf"const {const_name} = `(.*?)`(?=;)"
+            match = re.search(pattern, ts_content, re.DOTALL)
+            if match:
+                content = match.group(1).strip()
+                # Resolve template literal interpolations
+                content = content.replace("${baseGuardrails}\\n", base_guardrails + "\n")
+                content = content.replace("${baseGuardrails}", base_guardrails)
+                content_parts.append(content)
+        
+        if not content_parts:
+            raise ValueError(f"Could not find constants for {command_id} template")
+        
+        # Join the parts as the TypeScript code does
+        content = "\n\n".join(content_parts)
+        
+        # Add YAML frontmatter
+        frontmatter = f"""---
+name: OpenSpec: {command_id.title()}
+description: {self._get_description_for_command(command_id)}
+category: OpenSpec
+tags: [openspec, {command_id}]
+---
 
-This command scaffolds a new change proposal with the proper structure:
-- Why section explaining the motivation
-- What Changes section detailing the modifications
-- Proper file structure in openspec/changes/
+"""
+        content = frontmatter + content
+        
+        # Replace TypeScript CLI commands with Python equivalents
+        content = content.replace('`openspec ', f'`{cli_command} ')
+        content = content.replace(' openspec ', f' {cli_command} ')
+        
+        return content.strip()
+    
+    def _get_description_for_command(self, command_id: str) -> str:
+        """Get description for a command."""
+        descriptions = {
+            "proposal": "Scaffold a new OpenSpec change and validate strictly.",
+            "apply": "Implement an approved OpenSpec change and keep tasks in sync.",
+            "archive": "Archive a deployed OpenSpec change and update specs."
+        }
+        return descriptions.get(command_id, f"OpenSpec {command_id} command")
+    
+    def _create_fallback_claude_commands(self, claude_dir: Path) -> None:
+        """Create basic fallback Claude commands if TypeScript templates unavailable."""
+        proposal_content = """---
+name: OpenSpec: Proposal
+description: Create a new OpenSpec change proposal.
+category: OpenSpec
+tags: [openspec, change]
+---
 
-Usage: Use this when you need to propose a new feature or change.
+Create a new OpenSpec change proposal with proper structure and validation.
 
-Guidelines:
-- Be specific about what you're changing
-- Include clear motivation in the Why section
-- Follow OpenSpec formatting conventions
+Use `openspec-py change create <id>` to scaffold the proposal structure.
 """
         
-        apply_content = """Apply approved OpenSpec changes to specifications.
+        apply_content = """---
+name: OpenSpec: Apply
+description: Apply an OpenSpec change proposal.
+category: OpenSpec
+tags: [openspec, apply]
+---
 
-This command helps apply approved changes to the main specifications:
-- Reviews the change proposal
-- Merges requirements into main specs
-- Validates the updated specifications
+Apply an approved OpenSpec change proposal to the specifications.
 
-Usage: Use this after a change proposal has been approved.
+Review the change proposal and implement the specified changes.
+"""
+        
+        archive_content = """---
+name: OpenSpec: Archive
+description: Archive a completed OpenSpec change.
+category: OpenSpec
+tags: [openspec, archive]
+---
 
-Guidelines:
-- Only apply reviewed and approved changes
-- Validate specs after applying changes
-- Document any conflicts or issues
+Archive a completed OpenSpec change after implementation.
+
+Use `openspec-py archive <id>` to move the change to the archive.
 """
         
         write_file(str(claude_dir / "proposal.md"), proposal_content)
         write_file(str(claude_dir / "apply.md"), apply_content)
+        write_file(str(claude_dir / "archive.md"), archive_content)
     
     def _create_cursor_slash_commands(self, current_dir: Path) -> None:
         """Create Cursor slash command files."""
@@ -265,7 +383,7 @@ def prompt_for_ai_tools(available_tools: List) -> List:
 def init(force: bool, non_interactive: bool, ai_tools: str):
     """Initialize a new OpenSpec project."""
     command = InitCommand()
-    command.execute(force, non_interactive, ai_tools)
+    command.execute(target_dir=None, force=force, non_interactive=non_interactive, ai_tools=ai_tools)
 
 
 async def configure_ai_tools(project_path: str, openspec_dir: str, tool_ids: List[str]) -> None:
