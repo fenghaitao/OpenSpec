@@ -71,26 +71,8 @@ class InitCommand:
                 file_path = openspec_dir / template.path
                 write_file(str(file_path), template.content)
             
-            # Create short AGENTS.md stub in project root that redirects to openspec/AGENTS.md
-            root_agents_content = """<!-- OPENSPEC:START -->
-# OpenSpec Instructions
-
-These instructions are for AI assistants working in this project.
-
-Always open `@/openspec/AGENTS.md` when the request:
-- Mentions planning or proposals (words like proposal, spec, change, plan)
-- Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
-- Sounds ambiguous and you need the authoritative spec before coding
-
-Use `@/openspec/AGENTS.md` to learn:
-- How to create and apply change proposals
-- Spec format and conventions
-- Project structure and guidelines
-
-Keep this managed block so 'openspec-py update' can refresh the instructions.
-
-<!-- OPENSPEC:END -->
-"""
+            # Create root AGENTS.md stub from TypeScript template
+            root_agents_content = self._get_root_agents_template()
             write_file(str(current_dir / "AGENTS.md"), root_agents_content)
             
             # Create tool-specific configuration files with OpenSpec markers
@@ -248,6 +230,61 @@ tags: [openspec, {command_id}]
         }
         return descriptions.get(command_id, f"OpenSpec {command_id} command")
     
+    def _get_root_agents_template(self) -> str:
+        """Get the root AGENTS.md template from TypeScript."""
+        try:
+            from pathlib import Path
+            import re
+            
+            # Path to TypeScript root agents template
+            current_file = Path(__file__)
+            python_port_root = current_file.parent.parent.parent.parent.parent  # Go up to python_port root
+            openspec_root = python_port_root.parent  # Go up one more to main OpenSpec directory
+            ts_template_path = openspec_root / "src" / "core" / "templates" / "agents-root-stub.ts"
+            
+            # Read and extract the TypeScript template
+            ts_content = ts_template_path.read_text()
+            
+            # Extract the agentsRootStubTemplate content
+            pattern = r'export const agentsRootStubTemplate = `(.*?)`(?=;|\n\nexport|\n\n\/\/|$)'
+            match = re.search(pattern, ts_content, re.DOTALL)
+            
+            if match:
+                content = match.group(1).strip()
+                # Replace any TypeScript CLI commands with Python equivalents
+                content = content.replace('`openspec ', '`openspec-py ')
+                content = content.replace(' openspec ', ' openspec-py ')
+                
+                # Wrap with OpenSpec markers like the TypeScript version does
+                return f"""<!-- OPENSPEC:START -->
+{content}
+<!-- OPENSPEC:END -->
+"""
+                
+        except Exception as e:
+            self.console.print(f"[yellow]Warning: Could not read TypeScript root agents template ({e}). Using fallback.[/yellow]")
+        
+        # Fallback template
+        return """<!-- OPENSPEC:START -->
+# OpenSpec Instructions
+
+These instructions are for AI assistants working in this project.
+
+Always open `@/openspec/AGENTS.md` when the request:
+- Mentions planning or proposals (words like proposal, spec, change, plan)
+- Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
+- Sounds ambiguous and you need the authoritative spec before coding
+
+Use `@/openspec/AGENTS.md` to learn:
+- How to create and apply change proposals
+- Spec format and conventions
+- Project structure and guidelines
+
+Keep this managed block so 'openspec-py update' can refresh the instructions.
+
+<!-- OPENSPEC:END -->
+"""
+
     def _create_fallback_claude_commands(self, claude_dir: Path) -> None:
         """Create basic fallback Claude commands if TypeScript templates unavailable."""
         proposal_content = """---
