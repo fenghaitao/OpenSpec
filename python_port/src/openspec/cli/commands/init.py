@@ -391,7 +391,8 @@ def prompt_for_ai_tools(available_tools: List) -> List:
         
         answers = inquirer.prompt(questions)
         if not answers:
-            return []
+            # If user cancels or doesn't select anything, use defaults
+            return [tool for tool in available_tools if tool.value in ["claude", "cursor", "cline"] and tool.available]
             
         tool_lookup = {tool.value: tool for tool in available_tools}
         return [tool_lookup[value] for value in answers["ai_tools"] if value in tool_lookup]
