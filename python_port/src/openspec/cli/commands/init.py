@@ -22,7 +22,7 @@ class InitCommand:
     def __init__(self):
         self.console = Console()
     
-    def execute(self, target_dir: str = None, force: bool = False, non_interactive: bool = False, ai_tools: str = None):
+    def execute(self, target_dir: str = None, force: bool = False, non_interactive: bool = False, tools: str = None):
         """Execute the init command."""
         if target_dir:
             current_dir = Path(target_dir)
@@ -42,8 +42,8 @@ class InitCommand:
         selected_tools = []
         
         if non_interactive:
-            if ai_tools:
-                tool_names = [t.strip() for t in ai_tools.split(",")]
+            if tools:
+                tool_names = [t.strip() for t in tools.split(",")]
                 available_tools = {tool.value: tool for tool in AI_TOOLS if tool.available}
                 selected_tools = [available_tools[name] for name in tool_names if name in available_tools]
             else:
@@ -400,11 +400,11 @@ def prompt_for_ai_tools(available_tools: List) -> List:
 @click.command()
 @click.option("--force", "-f", is_flag=True, help="Force initialization even if directory exists")
 @click.option("--non-interactive", is_flag=True, help="Run in non-interactive mode")
-@click.option("--ai-tools", help="Comma-separated list of AI tools to configure")
-def init(force: bool, non_interactive: bool, ai_tools: str):
+@click.option("--tools", help="Comma-separated list of AI tools to configure")
+def init(force: bool, non_interactive: bool, tools: str):
     """Initialize a new OpenSpec project."""
     command = InitCommand()
-    command.execute(target_dir=None, force=force, non_interactive=non_interactive, ai_tools=ai_tools)
+    command.execute(target_dir=None, force=force, non_interactive=non_interactive, tools=tools)
 
 
 async def configure_ai_tools(project_path: str, openspec_dir: str, tool_ids: List[str]) -> None:

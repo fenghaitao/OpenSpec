@@ -36,7 +36,7 @@ class TestBasicCLIE2E:
             # Initialize project with Claude
             result = runner.invoke(main, [
                 "init", 
-                "--ai-tools", "claude",
+                "--tools", "claude",
                 "--non-interactive"
             ])
             
@@ -61,7 +61,7 @@ class TestBasicCLIE2E:
             os.chdir(str(temp_project))
             
             # Initialize project first
-            runner.invoke(main, ["init", "--ai-tools", "claude", "--non-interactive"])
+            runner.invoke(main, ["init", "--tools", "claude", "--non-interactive"])
             
             # Create a change
             result = runner.invoke(main, ["change", "create", "test-feature"])
@@ -97,7 +97,7 @@ This feature is needed to improve the system functionality and provide better us
             os.chdir(str(temp_project))
             
             # Initialize project first
-            runner.invoke(main, ["init", "--ai-tools", "claude", "--non-interactive"])
+            runner.invoke(main, ["init", "--tools", "claude", "--non-interactive"])
             
             # Create a spec
             result = runner.invoke(main, ["spec", "create", "api-spec"])
@@ -145,7 +145,7 @@ The API SHALL provide a POST endpoint at /api/users that creates a new user.
             os.chdir(str(temp_project))
             
             # Initialize project and create some items
-            runner.invoke(main, ["init", "--ai-tools", "claude", "--non-interactive"])
+            runner.invoke(main, ["init", "--tools", "claude", "--non-interactive"])
             runner.invoke(main, ["change", "create", "change-1"])
             runner.invoke(main, ["change", "create", "change-2"])
             runner.invoke(main, ["spec", "create", "spec-1"])
@@ -165,7 +165,7 @@ The API SHALL provide a POST endpoint at /api/users that creates a new user.
             os.chdir(str(temp_project))
             
             # Initialize project and create items
-            runner.invoke(main, ["init", "--ai-tools", "claude", "--non-interactive"])
+            runner.invoke(main, ["init", "--tools", "claude", "--non-interactive"])
             runner.invoke(main, ["change", "create", "show-test"])
             runner.invoke(main, ["spec", "create", "show-spec"])
             
@@ -184,7 +184,7 @@ The API SHALL provide a POST endpoint at /api/users that creates a new user.
             os.chdir(str(temp_project))
             
             # Initialize project and create items
-            runner.invoke(main, ["init", "--ai-tools", "claude", "--non-interactive"])
+            runner.invoke(main, ["init", "--tools", "claude", "--non-interactive"])
             runner.invoke(main, ["change", "create", "json-test"])
             runner.invoke(main, ["spec", "create", "json-spec"])
             
@@ -237,7 +237,7 @@ All API responses SHALL be in valid JSON format.
             os.chdir(str(temp_project))
             
             # Initialize project
-            runner.invoke(main, ["init", "--ai-tools", "claude", "--non-interactive"])
+            runner.invoke(main, ["init", "--tools", "claude", "--non-interactive"])
             
             # View dashboard
             result = runner.invoke(main, ["view"])
@@ -251,7 +251,7 @@ All API responses SHALL be in valid JSON format.
             os.chdir(str(temp_project))
             
             # Initialize project
-            runner.invoke(main, ["init", "--ai-tools", "claude", "--non-interactive"])
+            runner.invoke(main, ["init", "--tools", "claude", "--non-interactive"])
             
             # Update agent files
             result = runner.invoke(main, ["update"])
@@ -288,7 +288,7 @@ All API responses SHALL be in valid JSON format.
             os.chdir(str(temp_project))
             
             # Initialize project
-            runner.invoke(main, ["init", "--ai-tools", "claude", "--non-interactive"])
+            runner.invoke(main, ["init", "--tools", "claude", "--non-interactive"])
             
             # Create and set up a change
             runner.invoke(main, ["change", "create", "workflow-test"])
