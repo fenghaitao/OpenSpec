@@ -43,9 +43,14 @@ class InitCommand:
         
         if non_interactive:
             if tools:
-                tool_names = [t.strip() for t in tools.split(",")]
-                available_tools = {tool.value: tool for tool in AI_TOOLS if tool.available}
-                selected_tools = [available_tools[name] for name in tool_names if name in available_tools]
+                if tools.lower() == "all":
+                    selected_tools = [tool for tool in AI_TOOLS if tool.available]
+                elif tools.lower() == "none":
+                    selected_tools = []
+                else:
+                    tool_names = [t.strip() for t in tools.split(",")]
+                    available_tools = {tool.value: tool for tool in AI_TOOLS if tool.available}
+                    selected_tools = [available_tools[name] for name in tool_names if name in available_tools]
             else:
                 # In non-interactive mode without tools specified, use defaults
                 available_tools = [tool for tool in AI_TOOLS if tool.available]
@@ -398,13 +403,14 @@ def prompt_for_ai_tools(available_tools: List) -> List:
 
 
 @click.command()
+@click.argument("path", required=False, default=".")
 @click.option("--force", "-f", is_flag=True, help="Force initialization even if directory exists")
 @click.option("--non-interactive", is_flag=True, help="Run in non-interactive mode")
-@click.option("--tools", help="Comma-separated list of AI tools to configure")
-def init(force: bool, non_interactive: bool, tools: str):
-    """Initialize a new OpenSpec project."""
+@click.option("--tools", help='Configure AI tools non-interactively. Use "all", "none", or a comma-separated list of available tools')
+def init(path: str, force: bool, non_interactive: bool, tools: str):
+    """Initialize OpenSpec in your project."""
     command = InitCommand()
-    command.execute(target_dir=None, force=force, non_interactive=non_interactive, tools=tools)
+    command.execute(target_dir=path, force=force, non_interactive=non_interactive, tools=tools)
 
 
 async def configure_ai_tools(project_path: str, openspec_dir: str, tool_ids: List[str]) -> None:
