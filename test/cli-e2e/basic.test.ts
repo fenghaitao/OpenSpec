@@ -78,6 +78,46 @@ describe('openspec CLI e2e basics', () => {
     expect(result.stderr).toContain("Unknown item 'does-not-exist'");
   });
 
+  it('lists archived changes with --archive flag', async () => {
+    const projectDir = await prepareFixture('tmp-init');
+    
+    // Create some archived changes
+    const archiveDir = path.join(projectDir, 'openspec', 'changes', 'archive');
+    await fs.mkdir(archiveDir, { recursive: true });
+    
+    await fs.mkdir(path.join(archiveDir, '2025-01-15-old-feature'), { recursive: true });
+    await fs.writeFile(
+      path.join(archiveDir, '2025-01-15-old-feature', 'tasks.md'),
+      '- [x] Task 1\n- [x] Task 2\n'
+    );
+    
+    await fs.mkdir(path.join(archiveDir, '2025-03-20-new-feature'), { recursive: true });
+    await fs.writeFile(
+      path.join(archiveDir, '2025-03-20-new-feature', 'tasks.md'),
+      '- [x] Done\n- [ ] Not done\n'
+    );
+
+    const result = await runCLI(['list', '--archive'], { cwd: projectDir });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('Archived Changes:');
+    expect(result.stdout).toContain('2025-01-15');
+    expect(result.stdout).toContain('old-feature');
+    expect(result.stdout).toContain('2025-03-20');
+    expect(result.stdout).toContain('new-feature');
+    
+    // Verify newest first (2025-03-20 should appear before 2025-01-15)
+    const newFeatureIndex = result.stdout.indexOf('new-feature');
+    const oldFeatureIndex = result.stdout.indexOf('old-feature');
+    expect(newFeatureIndex).toBeLessThan(oldFeatureIndex);
+  });
+
+  it('returns error when using --specs and --archive together', async () => {
+    const projectDir = await prepareFixture('tmp-init');
+    const result = await runCLI(['list', '--specs', '--archive'], { cwd: projectDir });
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('Cannot use --specs and --archive together');
+  });
+
   describe('init command non-interactive options', () => {
     it('initializes with --tools all option', async () => {
       const projectDir = await prepareFixture('tmp-init');

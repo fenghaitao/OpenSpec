@@ -90,13 +90,25 @@ program
 
 program
   .command('list')
-  .description('List items (changes by default). Use --specs to list specs.')
+  .description('List items (changes by default). Use --specs to list specs or --archive to list archived changes.')
   .option('--specs', 'List specs instead of changes')
   .option('--changes', 'List changes explicitly (default)')
-  .action(async (options?: { specs?: boolean; changes?: boolean }) => {
+  .option('--archive', 'List archived changes')
+  .action(async (options?: { specs?: boolean; changes?: boolean; archive?: boolean }) => {
     try {
+      // Check for conflicting flags
+      if (options?.specs && options?.archive) {
+        console.error('Error: Cannot use --specs and --archive together');
+        process.exit(1);
+      }
+
       const listCommand = new ListCommand();
-      const mode: 'changes' | 'specs' = options?.specs ? 'specs' : 'changes';
+      let mode: 'changes' | 'specs' | 'archive' = 'changes';
+      if (options?.specs) {
+        mode = 'specs';
+      } else if (options?.archive) {
+        mode = 'archive';
+      }
       await listCommand.execute('.', mode);
     } catch (error) {
       console.log(); // Empty line for spacing

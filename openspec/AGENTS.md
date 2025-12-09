@@ -94,6 +94,7 @@ After deployment, create separate PR to:
 # Essential commands
 openspec list                  # List active changes
 openspec list --specs          # List specifications
+openspec list --archive        # List archived changes
 openspec show [item]           # Display change or spec
 openspec validate [item]       # Validate changes or specs
 openspec archive <change-id> [--yes|-y]   # Archive after deployment (add --yes for non-interactive runs)
@@ -119,6 +120,8 @@ openspec validate [change] --strict
 - `--no-interactive` - Disable prompts
 - `--skip-specs` - Archive without spec updates
 - `--yes`/`-y` - Skip confirmation prompts (non-interactive archive)
+- `--archive` - List archived changes (use with `openspec list`)
+- `--specs` - List specifications (use with `openspec list`)
 
 ## Directory Structure
 

@@ -11,8 +11,20 @@ interface ChangeInfo {
   totalTasks: number;
 }
 
+interface ArchivedChangeInfo {
+  archiveDate: string;
+  changeName: string;
+  completedTasks: number;
+  totalTasks: number;
+}
+
 export class ListCommand {
-  async execute(targetPath: string = '.', mode: 'changes' | 'specs' = 'changes'): Promise<void> {
+  async execute(targetPath: string = '.', mode: 'changes' | 'specs' | 'archive' = 'changes'): Promise<void> {
+    if (mode === 'archive') {
+      await this.listArchivedChanges(targetPath);
+      return;
+    }
+
     if (mode === 'changes') {
       const changesDir = path.join(targetPath, 'openspec', 'changes');
       
@@ -100,5 +112,82 @@ export class ListCommand {
       const padded = spec.id.padEnd(nameWidth);
       console.log(`${padding}${padded}     requirements ${spec.requirementCount}`);
     }
+  }
+
+  private async listArchivedChanges(targetPath: string): Promise<void> {
+    const archiveDir = path.join(targetPath, 'openspec', 'changes', 'archive');
+
+    // Check if archive directory exists
+    try {
+      await fs.access(archiveDir);
+    } catch {
+      console.log('No archived changes found.');
+      return;
+    }
+
+    // Get all directories in archive
+    const entries = await fs.readdir(archiveDir, { withFileTypes: true });
+    const archiveDirs = entries
+      .filter(entry => entry.isDirectory())
+      .map(entry => entry.name);
+
+    if (archiveDirs.length === 0) {
+      console.log('No archived changes found.');
+      return;
+    }
+
+    // Parse archive directory names and collect information
+    const archivedChanges: ArchivedChangeInfo[] = [];
+
+    for (const dirName of archiveDirs) {
+      const parsed = this.parseArchiveName(dirName);
+      if (!parsed) {
+        // Skip directories that don't match the expected pattern
+        continue;
+      }
+
+      const changeDir = path.join(archiveDir, dirName);
+      const progress = await getTaskProgressForChange(archiveDir, dirName);
+
+      archivedChanges.push({
+        archiveDate: parsed.date,
+        changeName: parsed.name,
+        completedTasks: progress.completed,
+        totalTasks: progress.total
+      });
+    }
+
+    if (archivedChanges.length === 0) {
+      console.log('No archived changes found.');
+      return;
+    }
+
+    // Sort by date (newest first)
+    archivedChanges.sort((a, b) => b.archiveDate.localeCompare(a.archiveDate));
+
+    // Display results
+    console.log('Archived Changes:');
+    const padding = '  ';
+    const dateWidth = 10; // YYYY-MM-DD
+    const nameWidth = Math.max(...archivedChanges.map(c => c.changeName.length));
+
+    for (const change of archivedChanges) {
+      const paddedDate = change.archiveDate.padEnd(dateWidth);
+      const paddedName = change.changeName.padEnd(nameWidth);
+      const status = formatTaskStatus({ total: change.totalTasks, completed: change.completedTasks });
+      console.log(`${padding}${paddedDate}  ${paddedName}     ${status}`);
+    }
+  }
+
+  private parseArchiveName(dirName: string): { date: string; name: string } | null {
+    // Expected format: YYYY-MM-DD-<change-name>
+    const match = dirName.match(/^(\d{4}-\d{2}-\d{2})-(.+)$/);
+    if (!match) {
+      return null;
+    }
+    return {
+      date: match[1],
+      name: match[2]
+    };
   }
 }

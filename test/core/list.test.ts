@@ -162,4 +162,124 @@ Regular text that should be ignored
       expect(logOutput.some(line => line.includes('no-tasks') && line.includes('No tasks'))).toBe(true);
     });
   });
+
+  describe('archive mode', () => {
+    it('should handle missing archive directory', async () => {
+      const changesDir = path.join(tempDir, 'openspec', 'changes');
+      await fs.mkdir(changesDir, { recursive: true });
+
+      const listCommand = new ListCommand();
+      await listCommand.execute(tempDir, 'archive');
+
+      expect(logOutput).toEqual(['No archived changes found.']);
+    });
+
+    it('should handle empty archive directory', async () => {
+      const archiveDir = path.join(tempDir, 'openspec', 'changes', 'archive');
+      await fs.mkdir(archiveDir, { recursive: true });
+
+      const listCommand = new ListCommand();
+      await listCommand.execute(tempDir, 'archive');
+
+      expect(logOutput).toEqual(['No archived changes found.']);
+    });
+
+    it('should list archived changes with dates', async () => {
+      const archiveDir = path.join(tempDir, 'openspec', 'changes', 'archive');
+      await fs.mkdir(path.join(archiveDir, '2025-01-15-feature-a'), { recursive: true });
+      await fs.writeFile(
+        path.join(archiveDir, '2025-01-15-feature-a', 'tasks.md'),
+        '- [x] Task 1\n- [x] Task 2\n'
+      );
+
+      const listCommand = new ListCommand();
+      await listCommand.execute(tempDir, 'archive');
+
+      expect(logOutput).toContain('Archived Changes:');
+      expect(logOutput.some(line => line.includes('2025-01-15') && line.includes('feature-a'))).toBe(true);
+    });
+
+    it('should sort archived changes by date (newest first)', async () => {
+      const archiveDir = path.join(tempDir, 'openspec', 'changes', 'archive');
+      await fs.mkdir(path.join(archiveDir, '2025-01-10-old'), { recursive: true });
+      await fs.mkdir(path.join(archiveDir, '2025-03-15-newest'), { recursive: true });
+      await fs.mkdir(path.join(archiveDir, '2025-02-20-middle'), { recursive: true });
+
+      const listCommand = new ListCommand();
+      await listCommand.execute(tempDir, 'archive');
+
+      const archiveLines = logOutput.filter(line => 
+        line.includes('old') || line.includes('newest') || line.includes('middle')
+      );
+      
+      expect(archiveLines[0]).toContain('newest');
+      expect(archiveLines[1]).toContain('middle');
+      expect(archiveLines[2]).toContain('old');
+    });
+
+    it('should skip invalid archive directory names', async () => {
+      const archiveDir = path.join(tempDir, 'openspec', 'changes', 'archive');
+      await fs.mkdir(path.join(archiveDir, '2025-01-15-valid-change'), { recursive: true });
+      await fs.mkdir(path.join(archiveDir, 'invalid-name'), { recursive: true });
+      await fs.mkdir(path.join(archiveDir, '2025-invalid'), { recursive: true });
+
+      const listCommand = new ListCommand();
+      await listCommand.execute(tempDir, 'archive');
+
+      expect(logOutput.some(line => line.includes('valid-change'))).toBe(true);
+      expect(logOutput.some(line => line.includes('invalid-name'))).toBe(false);
+      expect(logOutput.some(line => line.includes('2025-invalid'))).toBe(false);
+    });
+
+    it('should show task completion status for archived changes', async () => {
+      const archiveDir = path.join(tempDir, 'openspec', 'changes', 'archive');
+      
+      // Complete archive
+      await fs.mkdir(path.join(archiveDir, '2025-01-15-complete'), { recursive: true });
+      await fs.writeFile(
+        path.join(archiveDir, '2025-01-15-complete', 'tasks.md'),
+        '- [x] Task 1\n- [x] Task 2\n'
+      );
+
+      // Partial archive
+      await fs.mkdir(path.join(archiveDir, '2025-01-16-partial'), { recursive: true });
+      await fs.writeFile(
+        path.join(archiveDir, '2025-01-16-partial', 'tasks.md'),
+        '- [x] Done\n- [ ] Not done\n'
+      );
+
+      const listCommand = new ListCommand();
+      await listCommand.execute(tempDir, 'archive');
+
+      expect(logOutput.some(line => line.includes('complete') && line.includes('✓ Complete'))).toBe(true);
+      expect(logOutput.some(line => line.includes('partial') && line.includes('1/2 tasks'))).toBe(true);
+    });
+
+    it('should handle archived changes without tasks.md', async () => {
+      const archiveDir = path.join(tempDir, 'openspec', 'changes', 'archive');
+      await fs.mkdir(path.join(archiveDir, '2025-01-15-no-tasks'), { recursive: true });
+
+      const listCommand = new ListCommand();
+      await listCommand.execute(tempDir, 'archive');
+
+      expect(logOutput.some(line => line.includes('no-tasks') && line.includes('No tasks'))).toBe(true);
+    });
+
+    it('should display only valid archives when mixed with invalid names', async () => {
+      const archiveDir = path.join(tempDir, 'openspec', 'changes', 'archive');
+      await fs.mkdir(path.join(archiveDir, '2025-01-15-valid-one'), { recursive: true });
+      await fs.mkdir(path.join(archiveDir, 'not-a-date-format'), { recursive: true });
+      await fs.mkdir(path.join(archiveDir, '2025-02-20-valid-two'), { recursive: true });
+
+      const listCommand = new ListCommand();
+      await listCommand.execute(tempDir, 'archive');
+
+      const archiveLines = logOutput.filter(line => 
+        line.includes('valid-one') || line.includes('valid-two')
+      );
+      
+      expect(archiveLines.length).toBe(2);
+      expect(logOutput.some(line => line.includes('not-a-date-format'))).toBe(false);
+    });
+  });
 });
